@@ -69,16 +69,15 @@ tip_index = np.where(planform_coords[:, 1] == half_span)[0][0]
 leading_coords = planform_coords[:tip_index, :]
 trailing_coords = np.flip(planform_coords[tip_index:, :], axis=0)
 
-# Set the number of flap cycles to run the simulation for. The converged result is 3
-# flaps.
-num_flaps = 3
+# Set the number of flap cycles to run the simulation for.
+num_flaps = 2
 
-# Set the number of chordwise panels. The converged result is 5 panels.
-num_chordwise_panels = 5
+# Set the number of chordwise panels.
+num_chordwise_panels = 9
 
 # Set the number of sections to map on each wing half. There will be this number +1
-# wing cross sections per wing half. The converged result is 18 spanwise sections.
-num_spanwise_sections = 18
+# wing cross sections per wing half.
+num_spanwise_sections = 33
 
 # Set the chordwise spacing scheme for the panels. This is set to uniform,
 # as is standard for UVLM simulations.

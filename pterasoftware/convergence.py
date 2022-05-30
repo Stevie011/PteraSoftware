@@ -1310,6 +1310,13 @@ def analyze_unsteady_convergence(
                             converged_wake_length,
                             converged_aspect_ratio,
                             converged_chordwise_panels,
+                            wake_list,
+                            wake_lengths_list,
+                            panel_aspect_ratios_list,
+                            num_chordwise_panels_list,
+                            iter_times,
+                            force_coefficients,
+                            moment_coefficients,
                         ]
 
     # If all iterations have been checked and none of them resulted in all
