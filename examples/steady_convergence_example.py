@@ -136,6 +136,7 @@ del leading_airplane
 del trailing_airplane
 del operating_point
 
+# ToDo: Update this comment to explain the coefficient mask.
 # Run the steady convergence analysis. This will run the problem several times,
 # modifying average panel aspect ratio, and number of chordwise panels with each
 # iteration. Once it detects that the net load coefficients haven't change by more
@@ -145,6 +146,7 @@ del operating_point
 # results are displayed to the console.
 ps.convergence.analyze_steady_convergence(
     ref_problem=problem,
+    coefficient_mask=[True, False, True, False, True, False],
     solver_type="steady ring vortex lattice method",
     panel_aspect_ratio_bounds=(4, 1),
     num_chordwise_panels_bounds=(3, 8),
@@ -154,4 +156,4 @@ ps.convergence.analyze_steady_convergence(
 # Check the console that the convergence analysis found that the solution converged
 # with the following parameters:
 # Panel aspect ratio: 4
-# Chordwise panels: 4
+# Chordwise panels: 7

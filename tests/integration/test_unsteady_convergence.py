@@ -62,6 +62,7 @@ class TestUnsteadyConvergence(unittest.TestCase):
 
         converged_parameters = ps.convergence.analyze_unsteady_convergence(
             ref_problem=self.unsteady_validation_problem,
+            coefficient_mask=[False, False, True, False, False, False],
             prescribed_wake=True,
             free_wake=True,
             num_chords_bounds=(6, 9),
@@ -74,8 +75,8 @@ class TestUnsteadyConvergence(unittest.TestCase):
         converged_panel_ar = converged_parameters[2]
         converged_num_chordwise = converged_parameters[3]
 
-        num_chords_ans = 7
-        panel_ar_ans = 4
+        num_chords_ans = 6
+        panel_ar_ans = 3
         num_chordwise_ans = 4
 
         self.assertTrue(abs(converged_num_chords - num_chords_ans) <= 1)

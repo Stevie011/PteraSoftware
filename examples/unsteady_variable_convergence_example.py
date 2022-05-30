@@ -74,6 +74,7 @@ problem = ps.problems.UnsteadyProblem(movement=movement, only_final_results=True
 
 del movement
 
+# ToDo: Update this comment to explain the coefficient mask.
 # Run the unsteady convergence analysis. This will run the problem several times,
 # modifying the wake state, wake length, average panel aspect ratio, and number of
 # chordwise panels with each iteration. Once it detects that the net load
@@ -83,17 +84,18 @@ del movement
 # more details. The progress and results are displayed to the console.
 ps.convergence.analyze_unsteady_convergence(
     ref_problem=problem,
+    coefficient_mask=[False, False, True, False, False, False],
     prescribed_wake=True,
-    free_wake=True,
-    num_cycles_bounds=(1, 4),
-    panel_aspect_ratio_bounds=(2, 1),
-    num_chordwise_panels_bounds=(4, 7),
+    free_wake=False,
+    num_cycles_bounds=(1, 5),
+    panel_aspect_ratio_bounds=(4, 4),
+    num_chordwise_panels_bounds=(6, 6),
     convergence_criteria=1.0,
 )
 
 # Check the console that the convergence analysis found that the solution converged
 # with the following parameters:
-# Wake state: free
+# Wake state: prescribed
 # Wake length: 2 cycles
-# Panel aspect ratio: 1
-# Chordwise panels: 5
+# Panel aspect ratio: 4
+# Chordwise panels: 6
