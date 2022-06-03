@@ -1,32 +1,13 @@
 # ToDo: Document this script.
-import time
-
-import numpy as np
-import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
 import pterasoftware as ps
+from matplotlib import pyplot as plt
 
-start_time = time.time()
-
-# Known Converged Values (0.5% convergence, 0 degrees angle of attack):
-#   1 Airplane (flaps, chordwise panels, prescribed wake):
-#       2, 7, False
-#   3 Airplanes (flaps, chordwise panels, prescribed wake):
-#       3, 7, False
-#   5 Airplanes (flaps, chordwise panels, prescribed wake):
-#       3, 7, False
-convergence = 0.5
 num_airplanes = 5
-min_num_flaps = 1
-max_num_flaps = 4
-min_num_chord = 5
-max_num_chord = 13
-wake_state_list = [True, False]
 
-aspect_ratio = 5.0
 speed = 1.0
-alpha = 0.0
+alpha = 5.0
 x_spacing = 0.5
 y_spacing = 0.5
 root_to_mid_span = 0.2275
@@ -39,452 +20,194 @@ period = x_spacing / speed
 root_to_mid_chord = root_chord
 mid_to_tip_chord = (root_chord + tip_chord) / 2
 
-num_flaps_list = [i for i in range(min_num_flaps, max_num_flaps + 1)]
-num_chord_list = [i for i in range(min_num_chord, max_num_chord + 1)]
-
-rms_lifts = np.zeros(
-    (len(wake_state_list), len(num_flaps_list), len(num_chord_list), num_airplanes)
-)
-rms_drags = np.zeros(
-    (len(wake_state_list), len(num_flaps_list), len(num_chord_list), num_airplanes)
-)
-iter_times = np.zeros((len(wake_state_list), len(num_flaps_list), len(num_chord_list)))
-
-iteration = 0
-num_iterations = len(wake_state_list) * len(num_flaps_list) * len(num_chord_list)
-
-converged = None
-prescribed_wake = None
-num_flaps = None
-num_chord = None
-iter_time = None
-wake_state_id = None
-num_flaps_id = None
-num_chord_id = None
-single_wake = None
-single_flap = None
-single_chord = None
-wake_saturated = None
-this_solver = None
-
+# Leave alpha zero here as the wing twist is used later to set alpha.
 this_operating_point = ps.operating_point.OperatingPoint(
     velocity=speed,
-    alpha=0.0,
+    alpha=0,
 )
 this_operating_point_movement = ps.movement.OperatingPointMovement(
     base_operating_point=this_operating_point,
 )
 del this_operating_point
 
-for wake_state_id, prescribed_wake in enumerate(wake_state_list):
-    print("Prescribed Wake:", prescribed_wake)
-    for num_flaps_id, num_flaps in enumerate(num_flaps_list):
-        print("\tNumber of flaps:", num_flaps)
-        for num_chord_id, num_chord in enumerate(num_chord_list):
-            print("\t\tNumber of chordwise panels:", num_chord)
-
-            iteration += 1
-            print("\t\t\t\t", iteration, "/", num_iterations, sep="")
-
-            root_to_mid_panel_chord = root_to_mid_chord / num_chord
-            mid_to_tip_panel_chord = mid_to_tip_chord / num_chord
-
-            root_to_mid_num_span = round(
-                root_to_mid_span / (aspect_ratio * root_to_mid_panel_chord)
-            )
-            mid_to_tip_num_span = round(
-                mid_to_tip_span / (aspect_ratio * mid_to_tip_panel_chord)
-            )
-
-            these_airplane_movements = []
-            row = None
-            position = None
-            offset_sign = None
-            for airplane_id in range(num_airplanes):
-                if airplane_id == 0:
-                    row = 1
-                    position = ""
-                    offset_sign = 1
-                elif airplane_id % 2 != 0:
-                    row += 1
-                    position = "Right "
-                    offset_sign = 1
-                else:
-                    position = "Left "
-                    offset_sign = -1
-
-                this_name = "Airplane " + position + str(row)
-
-                offset = row - 1
-
-                this_airplane = ps.geometry.Airplane(
-                    name=this_name,
-                    x_ref=offset * x_spacing,
-                    y_ref=offset_sign * offset * y_spacing,
-                    wings=[
-                        ps.geometry.Wing(
-                            name="Main Wing",
-                            symmetric=True,
-                            chordwise_spacing="uniform",
-                            x_le=offset * x_spacing,
-                            y_le=offset_sign * offset * y_spacing,
-                            num_chordwise_panels=num_chord,
-                            wing_cross_sections=[
-                                ps.geometry.WingCrossSection(
-                                    twist=alpha,
-                                    chord=root_chord,
-                                    airfoil=ps.geometry.Airfoil(name="naca0012"),
-                                    num_spanwise_panels=root_to_mid_num_span,
-                                    spanwise_spacing="cosine",
-                                ),
-                                ps.geometry.WingCrossSection(
-                                    twist=alpha,
-                                    y_le=root_to_mid_span,
-                                    chord=root_chord,
-                                    airfoil=ps.geometry.Airfoil(name="naca0012"),
-                                    num_spanwise_panels=mid_to_tip_num_span,
-                                    spanwise_spacing="cosine",
-                                ),
-                                ps.geometry.WingCrossSection(
-                                    twist=alpha,
-                                    y_le=root_to_mid_span + mid_to_tip_span,
-                                    chord=tip_chord,
-                                    airfoil=ps.geometry.Airfoil(name="naca0012"),
-                                ),
-                            ],
-                        ),
-                    ],
-                )
-
-                this_airplane_movement = ps.movement.AirplaneMovement(
-                    base_airplane=this_airplane,
-                    wing_movements=[
-                        ps.movement.WingMovement(
-                            base_wing=this_airplane.wings[0],
-                            wing_cross_sections_movements=[
-                                ps.movement.WingCrossSectionMovement(
-                                    base_wing_cross_section=this_airplane.wings[
-                                        0
-                                    ].wing_cross_sections[0],
-                                ),
-                                ps.movement.WingCrossSectionMovement(
-                                    base_wing_cross_section=this_airplane.wings[
-                                        0
-                                    ].wing_cross_sections[1],
-                                    sweeping_amplitude=flapping_amplitude,
-                                    sweeping_period=period,
-                                    sweeping_spacing="sine",
-                                ),
-                                ps.movement.WingCrossSectionMovement(
-                                    base_wing_cross_section=this_airplane.wings[
-                                        0
-                                    ].wing_cross_sections[2],
-                                    sweeping_amplitude=flapping_amplitude,
-                                    sweeping_period=period,
-                                    sweeping_spacing="sine",
-                                ),
-                            ],
-                        )
-                    ],
-                )
-
-                these_airplane_movements.append(this_airplane_movement)
-
-                del this_airplane
-                del this_airplane_movement
-
-            this_movement = ps.movement.Movement(
-                airplane_movements=these_airplane_movements,
-                operating_point_movement=this_operating_point_movement,
-                num_steps=None,
-                num_cycles=num_flaps,
-                delta_time=None,
-            )
-
-            del these_airplane_movements
-
-            this_problem = ps.problems.UnsteadyProblem(
-                movement=this_movement,
-                only_final_results=True,
-            )
-
-            del this_movement
-
-            this_solver = ps.unsteady_ring_vortex_lattice_method.UnsteadyRingVortexLatticeMethodSolver(
-                unsteady_problem=this_problem,
-            )
-
-            del this_problem
-
-            iter_start = time.time()
-
-            this_solver.run(
-                logging_level="Critical",
-                prescribed_wake=prescribed_wake,
-                calculate_streamlines=False,
-            )
-
-            iter_stop = time.time()
-            iter_time = round((iter_stop - iter_start), 2)
-            print("\t\t\t\t", iter_time, " s", sep="")
-            iter_times[wake_state_id, num_flaps_id, num_chord_id] = iter_time
-
-            first_results_step = this_solver.first_results_step
-            num_steps = this_solver.num_steps
-            num_results_steps = num_steps - first_results_step
-
-            total_forces = np.zeros((num_airplanes, 3, num_results_steps))
-            total_moments = np.zeros((num_airplanes, 3, num_results_steps))
-
-            results_step = 0
-            for step in range(first_results_step, num_steps):
-                airplanes = this_solver.steady_problems[step].airplanes
-                for airplane_id, airplane in enumerate(airplanes):
-                    total_forces[
-                        airplane_id, :, results_step
-                    ] = airplane.total_near_field_force_wind_axes
-                    total_moments[
-                        airplane_id, :, results_step
-                    ] = airplane.total_near_field_moment_wind_axes
-                results_step += 1
-
-            these_s_drags = total_forces[:, 0, :] ** 2
-            these_s_lifts = total_forces[:, 2, :] ** 2
-
-            these_ms_drags = np.mean(these_s_drags, axis=-1)
-            these_ms_lifts = np.mean(these_s_lifts, axis=-1)
-
-            these_rms_drags = these_ms_drags**0.5
-            these_rms_lifts = these_ms_lifts**0.5
-
-            rms_drags[wake_state_id, num_flaps_id, num_chord_id, :] = these_rms_drags
-            rms_lifts[wake_state_id, num_flaps_id, num_chord_id, :] = these_rms_lifts
-
-            max_wake_rmspc = np.inf
-            max_flap_rmspc = np.inf
-            max_chord_rmspc = np.inf
-
-            if wake_state_id > 0:
-                last_wake_rms_lifts = rms_lifts[
-                    wake_state_id - 1, num_flaps_id, num_chord_id, :
-                ]
-                last_wake_rms_drags = rms_drags[
-                    wake_state_id - 1, num_flaps_id, num_chord_id, :
-                ]
-                wake_lift_rmspcs = 100 * np.abs(
-                    (these_rms_lifts - last_wake_rms_lifts) / last_wake_rms_lifts
-                )
-                wake_drag_rmspcs = 100 * np.abs(
-                    (these_rms_drags - last_wake_rms_drags) / last_wake_rms_drags
-                )
-                max_wake_lift_rmspc = np.max(wake_lift_rmspcs)
-                max_wake_drag_rmspc = np.max(wake_drag_rmspcs)
-                max_wake_rmspc = max(max_wake_lift_rmspc, max_wake_drag_rmspc)
-
-                print(
-                    "\t\t\t\tMax Wake RMSPC: ",
-                    round(max_wake_rmspc, 2),
-                    "%",
-                    sep="",
-                )
-            else:
-                print("\t\t\t\tMax Wake RMSPC:", max_wake_rmspc)
-
-            if num_flaps_id > 0:
-                last_flap_rms_lifts = rms_lifts[
-                    wake_state_id, num_flaps_id - 1, num_chord_id, :
-                ]
-                last_flap_rms_drags = rms_drags[
-                    wake_state_id, num_flaps_id - 1, num_chord_id, :
-                ]
-                flap_lift_rmspcs = 100 * np.abs(
-                    (these_rms_lifts - last_flap_rms_lifts) / last_flap_rms_lifts
-                )
-                flap_drag_rmspcs = 100 * np.abs(
-                    (these_rms_drags - last_flap_rms_drags) / last_flap_rms_drags
-                )
-                max_flap_lift_rmspc = np.max(flap_lift_rmspcs)
-                max_flap_drag_rmspc = np.max(flap_drag_rmspcs)
-                max_flap_rmspc = max(max_flap_lift_rmspc, max_flap_drag_rmspc)
-
-                print(
-                    "\t\t\t\tMax Flap RMSPC: ",
-                    round(max_flap_rmspc, 2),
-                    "%",
-                    sep="",
-                )
-            else:
-                print("\t\t\t\tMax Flap RMSPC:", max_flap_rmspc)
-
-            if num_chord_id > 0:
-                last_chord_rms_lifts = rms_lifts[
-                    wake_state_id, num_flaps_id, num_chord_id - 1, :
-                ]
-                last_chord_rms_drags = rms_drags[
-                    wake_state_id, num_flaps_id, num_chord_id - 1, :
-                ]
-                chord_lift_rmspcs = 100 * np.abs(
-                    (these_rms_lifts - last_chord_rms_lifts) / last_chord_rms_lifts
-                )
-                chord_drag_rmspcs = 100 * np.abs(
-                    (these_rms_drags - last_chord_rms_drags) / last_chord_rms_drags
-                )
-                max_chord_lift_rmspc = np.max(chord_lift_rmspcs)
-                max_chord_drag_rmspc = np.max(chord_drag_rmspcs)
-                max_chord_rmspc = max(max_chord_lift_rmspc, max_chord_drag_rmspc)
-
-                print(
-                    "\t\t\t\tMax Chord RMSPC: ",
-                    round(max_chord_rmspc, 2),
-                    "%",
-                    sep="",
-                )
-            else:
-                print("\t\t\t\tMax Chord RMSPC:", max_chord_rmspc)
-
-            single_wake = len(wake_state_list) == 1
-            single_flap = len(num_flaps_list) == 1
-            single_chord = len(num_chord_list) == 1
-
-            wake_converged = max_wake_rmspc < convergence
-            flap_converged = max_flap_rmspc < convergence
-            chord_converged = max_chord_rmspc < convergence
-
-            wake_passed = wake_converged or single_wake
-            flap_passed = flap_converged or single_flap
-            chord_passed = chord_converged or single_chord
-
-            wake_saturated = prescribed_wake is False
-
-            converged = False
-            if wake_passed and flap_passed and chord_passed:
-                converged = True
-            elif wake_saturated and flap_passed and chord_passed:
-                converged = True
-
-            if converged:
-                break
-        else:
-            continue
-        break
+these_airplane_movements = []
+row = None
+position = None
+offset_sign = None
+for airplane_id in range(num_airplanes):
+    if airplane_id == 0:
+        row = 1
+        position = ""
+        offset_sign = 1
+    elif airplane_id % 2 != 0:
+        row += 1
+        position = "Right "
+        offset_sign = 1
     else:
-        continue
-    break
+        position = "Left "
+        offset_sign = -1
 
-plot_wake_state_id = len(wake_state_list) - 1
-plot_num_flaps_id = len(num_flaps_list) - 1
-plot_num_chord_id = len(num_chord_list) - 1
+    this_name = "Airplane " + position + str(row)
 
-if converged:
-    print("\nThe simulation found a converged solution:")
+    offset = row - 1
 
-    if single_wake and wake_saturated:
-        converged_wake_state_id = wake_state_list.index(False)
-    elif single_wake:
-        print("\tWarning: Wake state convergence not checked.")
-        converged_wake_state_id = wake_state_id
-    elif wake_saturated:
-        converged_wake_state_id = wake_state_list.index(False)
-    else:
-        converged_wake_state_id = wake_state_id - 1
+    this_airplane = ps.geometry.Airplane(
+        name=this_name,
+        x_ref=offset * x_spacing,
+        y_ref=offset_sign * offset * y_spacing,
+        wings=[
+            ps.geometry.Wing(
+                name="Main Wing",
+                symmetric=True,
+                chordwise_spacing="uniform",
+                x_le=offset * x_spacing,
+                y_le=offset_sign * offset * y_spacing,
+                wing_cross_sections=[
+                    ps.geometry.WingCrossSection(
+                        twist=alpha,
+                        chord=root_chord,
+                        airfoil=ps.geometry.Airfoil(name="naca0012"),
+                        spanwise_spacing="uniform",
+                    ),
+                    ps.geometry.WingCrossSection(
+                        twist=alpha,
+                        y_le=root_to_mid_span,
+                        chord=root_chord,
+                        airfoil=ps.geometry.Airfoil(name="naca0012"),
+                        spanwise_spacing="uniform",
+                    ),
+                    ps.geometry.WingCrossSection(
+                        twist=alpha,
+                        y_le=root_to_mid_span + mid_to_tip_span,
+                        chord=tip_chord,
+                        airfoil=ps.geometry.Airfoil(name="naca0012"),
+                    ),
+                ],
+            ),
+        ],
+    )
 
-    if single_flap:
-        print("\tWarning: Flap number convergence not checked.")
-        converged_num_flaps_id = num_flaps_id
-    else:
-        converged_num_flaps_id = num_flaps_id - 1
+    this_airplane_movement = ps.movement.AirplaneMovement(
+        base_airplane=this_airplane,
+        wing_movements=[
+            ps.movement.WingMovement(
+                base_wing=this_airplane.wings[0],
+                wing_cross_sections_movements=[
+                    ps.movement.WingCrossSectionMovement(
+                        base_wing_cross_section=this_airplane.wings[
+                            0
+                        ].wing_cross_sections[0],
+                    ),
+                    ps.movement.WingCrossSectionMovement(
+                        base_wing_cross_section=this_airplane.wings[
+                            0
+                        ].wing_cross_sections[1],
+                        sweeping_amplitude=flapping_amplitude,
+                        sweeping_period=period,
+                        sweeping_spacing="sine",
+                    ),
+                    ps.movement.WingCrossSectionMovement(
+                        base_wing_cross_section=this_airplane.wings[
+                            0
+                        ].wing_cross_sections[2],
+                        sweeping_amplitude=flapping_amplitude,
+                        sweeping_period=period,
+                        sweeping_spacing="sine",
+                    ),
+                ],
+            )
+        ],
+    )
 
-    if single_chord:
-        print("\tWarning: Chordwise panel number convergence not checked.")
-        converged_num_chord_id = num_chord_id
-    else:
-        converged_num_chord_id = num_chord_id - 1
+    these_airplane_movements.append(this_airplane_movement)
 
-    converged_wake_state = wake_state_list[converged_wake_state_id]
-    converged_num_flaps = num_flaps_list[converged_num_flaps_id]
-    converged_num_chord = num_chord_list[converged_num_chord_id]
-    this_iter_time = iter_times[
-        converged_wake_state_id,
-        converged_num_flaps_id,
-        converged_num_chord_id,
-    ]
+    del this_airplane
+    del this_airplane_movement
 
-    plot_wake_state_id = converged_wake_state_id
-    plot_num_flaps_id = converged_num_flaps_id
-    plot_num_chord_id = converged_num_chord_id
+this_movement = ps.movement.Movement(
+    airplane_movements=these_airplane_movements,
+    operating_point_movement=this_operating_point_movement,
+    num_steps=None,
+    delta_time=None,
+)
 
-    print("\tPrescribed wake:\t", converged_wake_state, sep="")
-    print("\tNumber of flaps:\t", converged_num_flaps, sep="")
-    print("\tNumber of chordwise panels:\t", converged_num_chord, sep="")
-    print("\tSimulation time:\t", this_iter_time, " s", sep="")
-else:
-    print("\nThe simulation could not find a converged solution.")
+del these_airplane_movements
 
-if not single_chord:
-    lift_figure, lift_axes = plt.subplots()
-    drag_figure, drag_axes = plt.subplots()
+this_problem = ps.problems.UnsteadyProblem(
+    movement=this_movement,
+    only_final_results=True,
+)
 
-    row = None
-    for airplane_id in range(num_airplanes):
-        if airplane_id == 0:
-            row = 1
-        elif airplane_id % 2 == 0:
-            row += 1
-        else:
-            continue
+del this_movement
 
-        these_rms_lifts = rms_lifts[
-            plot_wake_state_id,
-            plot_num_flaps_id,
-            : (plot_num_chord_id + 2),
-            airplane_id,
-        ]
-        these_rms_drags = rms_drags[
-            plot_wake_state_id,
-            plot_num_flaps_id,
-            : (plot_num_chord_id + 2),
-            airplane_id,
-        ]
+# 5% Convergence:
+#   1 Airplane:
+#       wake:               prescribed
+#       cycles:             2
+#       panel aspect ratio: 4 (2 and 1 spanwise panels)
+#       chordwise panels:   3
+#   3 Airplanes:
+#       wake:               free
+#       cycles:             2
+#       panel aspect ratio: 4 (2 and 1 spanwise panels)
+#       chordwise panels:   3
+#   5 Airplanes:
+#       wake:               free
+#       cycles:             2
+#       panel aspect ratio: 4 (2 and 1 spanwise panels)
+#       chordwise panels:   3
+# 1% Convergence:
+#   1 Airplane:
+#       wake:               free
+#       cycles:             2
+#       panel aspect ratio: 1 (6 and 6 spanwise panels)
+#       chordwise panels:   3
+#   3 Airplanes:
+#       wake:               free
+#       cycles:             3
+#       panel aspect ratio: 1 (10 and 9 spanwise panels)
+#       chordwise panels:   5
+#   5 Airplanes:
+#       wake:               free
+#       cycles:             3
+#       panel aspect ratio: 1 (10 and 9 spanwise panels)
+#       chordwise panels:   5
+converged_parameters = ps.convergence.analyze_unsteady_convergence(
+    ref_problem=this_problem,
+    coefficient_mask=[True, False, True, False, False, False],
+    prescribed_wake=True,
+    free_wake=True,
+    num_cycles_bounds=(3, 4),
+    panel_aspect_ratio_bounds=(2, 1),
+    num_chordwise_panels_bounds=(5, 6),
+    convergence_criteria=1.0,
+)
 
-        lift_axes.plot(
-            num_chord_list[: (plot_num_chord_id + 2)],
-            these_rms_lifts,
-            label="Row " + str(row),
-            marker="o",
-            linestyle="--",
-        )
-        drag_axes.plot(
-            num_chord_list[: (plot_num_chord_id + 2)],
-            these_rms_drags,
-            label="Row " + str(row),
-            marker="o",
-            linestyle="--",
-        )
+(
+    converged_wake,
+    converged_length,
+    converged_ar,
+    converged_chord,
+    wake_list,
+    length_list,
+    ar_list,
+    chord_list,
+    iter_times,
+    coefficients,
+) = converged_parameters
 
-    lift_axes.set_xlabel("Number of Chordwise Panels")
-    drag_axes.set_xlabel("Number of Chordwise Panels")
+single_flap = len(length_list) == 1
+single_ar = len(ar_list) == 1
+single_chord = len(chord_list) == 1
 
-    lift_axes.set_ylabel("RMS Lift (N)")
-    drag_axes.set_ylabel("RMS Drag (N)")
-
-    lift_axes.set_title("Number of Chordwise Panels\nLift Convergence")
-    drag_axes.set_title("Number of Chordwise Panels\nDrag Convergence")
-
-    lift_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
-    drag_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
-
-    lift_axes.set_ylim(bottom=0, top=0.0625)
-    drag_axes.set_ylim(bottom=0, top=0.0250)
-
-    lift_axes.legend(loc="lower left")
-    drag_axes.legend(loc="lower left")
-
-    lift_figure.show()
-    drag_figure.show()
+converged_wake_id = wake_list.index(converged_wake)
+converged_length_id = length_list.index(converged_length)
+converged_ar_id = ar_list.index(converged_ar)
+converged_chord_id = chord_list.index(converged_chord)
 
 if not single_flap:
-    lift_figure, lift_axes = plt.subplots()
-    drag_figure, drag_axes = plt.subplots()
+    force_figure, force_axes = plt.subplots()
+    moment_figure, moment_axes = plt.subplots()
 
     row = None
     for airplane_id in range(num_airplanes):
@@ -495,59 +218,187 @@ if not single_flap:
         else:
             continue
 
-        these_rms_lifts = rms_lifts[
-            plot_wake_state_id,
-            : (plot_num_flaps_id + 2),
-            plot_num_chord_id,
+        this_force = coefficients[
+            converged_wake_id,
+            : converged_length_id + 2,
+            converged_ar_id,
+            converged_chord_id,
             airplane_id,
+            :3,
         ]
-        these_rms_drags = rms_drags[
-            plot_wake_state_id,
-            : (plot_num_flaps_id + 2),
-            plot_num_chord_id,
+        this_moment = coefficients[
+            converged_wake_id,
+            : converged_length_id + 2,
+            converged_ar_id,
+            converged_chord_id,
             airplane_id,
+            3:,
         ]
 
-        lift_axes.plot(
-            num_flaps_list[: (plot_num_flaps_id + 2)],
-            these_rms_lifts,
+        force_axes.plot(
+            length_list[: converged_length_id + 2],
+            this_force,
             label="Row " + str(row),
             marker="o",
             linestyle="--",
         )
-        drag_axes.plot(
-            num_flaps_list[: (plot_num_flaps_id + 2)],
-            these_rms_drags,
+        moment_axes.plot(
+            length_list[: converged_length_id + 2],
+            this_moment,
             label="Row " + str(row),
             marker="o",
             linestyle="--",
         )
 
-    lift_axes.set_xlabel("Number of Flap Cycles")
-    drag_axes.set_xlabel("Number of Flap Cycles")
+    force_axes.set_xlabel("Number of Flap Cycles")
+    moment_axes.set_xlabel("Number of Flap Cycles")
 
-    lift_axes.set_ylabel("RMS Lift (N)")
-    drag_axes.set_ylabel("RMS Drag (N)")
+    force_axes.set_ylabel("Final Cycle-Averaged Force Coefficient")
+    moment_axes.set_ylabel("Final Cycle-Averaged Moment Coefficient")
 
-    lift_axes.set_title("Number of Flap Cycles\nLift Convergence")
-    drag_axes.set_title("Number of Flap Cycles\nDrag Convergence")
+    force_axes.set_title("Number of Flap Cycles\nForce Convergence")
+    moment_axes.set_title("Number of Flap Cycles\nMoment Convergence")
 
-    lift_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
-    drag_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
+    force_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
+    moment_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
 
-    lift_axes.set_ylim(bottom=0, top=0.0625)
-    drag_axes.set_ylim(bottom=0, top=0.0250)
+    force_axes.legend(loc="lower left")
+    moment_axes.legend(loc="lower left")
 
-    lift_axes.legend(loc="lower left")
-    drag_axes.legend(loc="lower left")
+    force_figure.show()
+    moment_figure.show()
 
-    lift_figure.show()
-    drag_figure.show()
+if not single_ar:
+    force_figure, force_axes = plt.subplots()
+    moment_figure, moment_axes = plt.subplots()
 
-np.save("rms_lifts", rms_lifts)
-np.save("rms_drags", rms_drags)
-np.save("iter_times", iter_times)
+    row = None
+    for airplane_id in range(num_airplanes):
+        if airplane_id == 0:
+            row = 1
+        elif airplane_id % 2 == 0:
+            row += 1
+        else:
+            continue
 
-stop_time = time.time()
-elapsed_time = round(stop_time - start_time)
-print("\nTotal Time: ", elapsed_time, " s", sep="")
+        this_force = coefficients[
+            converged_wake_id,
+            converged_length_id,
+            : converged_ar_id + 2,
+            converged_chord_id,
+            airplane_id,
+            0:2,
+        ]
+        this_moment = coefficients[
+            converged_wake_id,
+            converged_length_id,
+            : converged_ar_id + 2,
+            converged_chord_id,
+            airplane_id,
+            3:5,
+        ]
+
+        force_axes.plot(
+            ar_list[: converged_ar_id + 2],
+            this_force,
+            label="Row " + str(row),
+            marker="o",
+            linestyle="--",
+        )
+        moment_axes.plot(
+            ar_list[: converged_ar_id + 2],
+            this_moment,
+            label="Row " + str(row),
+            marker="o",
+            linestyle="--",
+        )
+
+    min_ar = min(ar_list[: converged_ar_id + 2])
+    max_ar = max(ar_list[: converged_ar_id + 2])
+    ar_range = max_ar - min_ar
+    ar_pad = ar_range * 0.25
+    x_min = max_ar + ar_pad
+    x_max = min_ar - ar_pad
+    force_axes.set_xlim(x_min, x_max)
+    moment_axes.set_xlim(x_min, x_max)
+
+    force_axes.set_xlabel("Panel Aspect Ratio")
+    moment_axes.set_xlabel("Panel Aspect Ratio")
+
+    force_axes.set_ylabel("Final Cycle-Averaged Force Coefficient")
+    moment_axes.set_ylabel("Final Cycle-Averaged Moment Coefficient")
+
+    force_axes.set_title("Panel Aspect Ratio\nForce Convergence")
+    moment_axes.set_title("Panel Aspect Ratio\nMoment Convergence")
+
+    force_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
+    moment_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
+
+    force_axes.legend(loc="lower left")
+    moment_axes.legend(loc="lower left")
+
+    force_figure.show()
+    moment_figure.show()
+
+if not single_chord:
+    force_figure, force_axes = plt.subplots()
+    moment_figure, moment_axes = plt.subplots()
+
+    row = None
+    for airplane_id in range(num_airplanes):
+        if airplane_id == 0:
+            row = 1
+        elif airplane_id % 2 == 0:
+            row += 1
+        else:
+            continue
+
+        this_force = coefficients[
+            converged_wake_id,
+            converged_length_id,
+            converged_ar_id,
+            : converged_chord_id + 2,
+            airplane_id,
+            0:2,
+        ]
+        this_moment = coefficients[
+            converged_wake_id,
+            converged_length_id,
+            converged_ar_id,
+            : converged_chord_id + 2,
+            airplane_id,
+            3:5,
+        ]
+
+        force_axes.plot(
+            chord_list[: converged_chord_id + 2],
+            this_force,
+            label="Row " + str(row),
+            marker="o",
+            linestyle="--",
+        )
+        moment_axes.plot(
+            chord_list[: converged_chord_id + 2],
+            this_moment,
+            label="Row " + str(row),
+            marker="o",
+            linestyle="--",
+        )
+
+        force_axes.set_xlabel("Number of Chordwise Panels")
+        moment_axes.set_xlabel("Number of Chordwise Panels")
+
+        force_axes.set_ylabel("Final Cycle-Averaged Force Coefficient")
+        moment_axes.set_ylabel("Final Cycle-Averaged Moment Coefficient")
+
+        force_axes.set_title("Number of Chordwise Panels\nForce Convergence")
+        moment_axes.set_title("Number of Chordwise Panels\nMoment Convergence")
+
+        force_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
+        moment_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
+
+        force_axes.legend(loc="lower left")
+        moment_axes.legend(loc="lower left")
+
+        force_figure.show()
+        moment_figure.show()

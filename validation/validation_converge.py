@@ -1,3 +1,4 @@
+# ToDo: Update this script's docstring and documentation.
 """This script runs a validation case of Ptera Software’s UVLM.
 
 I first emulate the geometry and kinematics of a flapping robotic test stand from
@@ -69,87 +70,7 @@ leading_coords = planform_coords[:tip_index, :]
 trailing_coords = np.flip(planform_coords[tip_index:, :], axis=0)
 
 
-def validation_geometry_sweep_function(this_time):
-    """This function takes in the time during a flap cycle and returns the flap angle
-    in degrees. It uses the flapping frequency defined in the encompassing script,
-    and is based on a fourth-order Fourier series. The coefficients were calculated
-    by the authors of Yeo et al., 2011.
-
-    :param this_time: float or 1D array of floats
-        This is a single time or an array of time values at which to calculate the
-        flap angle. The units are seconds.
-    :return flap_angle: float or 1D array of floats
-        This is a single flap angle or an array of flap angle values at the inputted
-        time value or values. The units are degrees.
-    """
-
-    # Set the Fourier series coefficients and the flapping frequency.
-    a_0 = 0.0354
-    a_1 = 4.10e-5
-    b_1 = 0.3793
-    a_2 = -0.0322
-    b_2 = -1.95e-6
-    a_3 = -8.90e-7
-    b_3 = -0.0035
-    a_4 = 0.00046
-    b_4 = -3.60e-6
-    f = validation_flapping_frequency
-
-    # Calculate and return the flap angle(s).
-    flap_angle = (
-        a_0
-        + a_1 * np.cos(1 * f * this_time)
-        + b_1 * np.sin(1 * f * this_time)
-        + a_2 * np.cos(2 * f * this_time)
-        + b_2 * np.sin(2 * f * this_time)
-        + a_3 * np.cos(3 * f * this_time)
-        + b_3 * np.sin(3 * f * this_time)
-        + a_4 * np.cos(4 * f * this_time)
-        + b_4 * np.sin(4 * f * this_time)
-    ) / 0.0174533
-    return flap_angle
-
-
-def normalized_validation_geometry_sweep_function_rad(this_time):
-    """This function takes in the time during a flap cycle and returns the flap angle
-    in radians. It uses a normalized flapping frequency of 1 Hertz, and is based on a
-    fourth-order Fourier series. The coefficients were calculated by the authors of
-    Yeo et al., 2011.
-
-    :param this_time: float or 1D array of floats
-        This is a single time or an array of time values at which to calculate the
-        flap angle. The units are seconds.
-    :return flap_angle: float or 1D array of floats
-        This is a single flap angle or an array of flap angle values at the inputted
-        time value or values. The units are radians.
-    """
-
-    # Set the Fourier series coefficients.
-    a_0 = 0.0354
-    a_1 = 4.10e-5
-    b_1 = 0.3793
-    a_2 = -0.0322
-    b_2 = -1.95e-6
-    a_3 = -8.90e-7
-    b_3 = -0.0035
-    a_4 = 0.00046
-    b_4 = -3.60e-6
-
-    # Calculate and return the flap angle(s).
-    flap_angle = -(
-        a_0
-        + a_1 * np.cos(1 * this_time)
-        + b_1 * np.sin(1 * this_time)
-        + a_2 * np.cos(2 * this_time)
-        + b_2 * np.sin(2 * this_time)
-        + a_3 * np.cos(3 * this_time)
-        + b_3 * np.sin(3 * this_time)
-        + a_4 * np.cos(4 * this_time)
-        + b_4 * np.sin(4 * this_time)
-    )
-    return flap_angle
-
-
+# ToDo: Document this function.
 def normalized_validation_geometry_sweep_function(this_time):
     """This function takes in the time during a flap cycle and returns the flap angle
     in degrees. It uses a normalized flapping frequency of 1 Hertz, and is based on a
@@ -193,13 +114,15 @@ def normalized_validation_geometry_sweep_function(this_time):
     return flap_angle
 
 
+# ToDo: Document this function.
 def analyze_convergence(
+    coefficient_mask,
     prescribed_wake=True,
     free_wake=True,
     num_cycles_bounds=(1, 4),
     panel_aspect_ratio_bounds=(4, 1),
     num_chordwise_panels_bounds=(3, 12),
-    convergence_criteria=1.0,
+    convergence_criteria=5.0,
 ):
     """This function finds the converged parameters of an unsteady problem.
 
@@ -313,22 +236,14 @@ def analyze_convergence(
             len(num_chordwise_panels_list),
         )
     )
-    force_coefficients = np.zeros(
+    coefficients = np.zeros(
         (
             len(wake_list),
             len(wake_lengths_list),
             len(panel_aspect_ratios_list),
             len(num_chordwise_panels_list),
             1,
-        )
-    )
-    moment_coefficients = np.zeros(
-        (
-            len(wake_list),
-            len(wake_lengths_list),
-            len(panel_aspect_ratios_list),
-            len(num_chordwise_panels_list),
-            1,
+            6,
         )
     )
 
@@ -373,6 +288,8 @@ def analyze_convergence(
                         + "/"
                         + str(num_iterations)
                     )
+
+                    these_ids = (wake_id, length_id, ar_id, chord_id)
 
                     # As we can't directly specify the panel aspect
                     # ratio, calculate the number of spanwise panels that
@@ -659,29 +576,23 @@ def analyze_convergence(
 
                     # Create and fill arrays with each of this iteration's airplane's
                     # resultant force and moment coefficients.
-                    these_force_coefficients = np.zeros(len(these_airplane_movements))
-                    these_moment_coefficients = np.zeros(len(these_airplane_movements))
+                    these_coefficients = np.zeros((len(these_airplane_movements), 6))
                     for airplane_id, airplane in enumerate(these_airplane_movements):
-                        these_force_coefficients[airplane_id] = np.linalg.norm(
-                            this_problem.final_total_near_field_force_coefficients_wind_axes[
-                                airplane_id
-                            ]
+                        these_force_coefficients = (
+                            this_problem.final_rms_force_coefficients[airplane_id]
                         )
-                        these_moment_coefficients[airplane_id] = np.linalg.norm(
-                            this_problem.final_total_near_field_moment_coefficients_wind_axes[
-                                airplane_id
-                            ]
+                        these_moment_coefficients = (
+                            this_problem.final_rms_moment_coefficients[airplane_id]
+                        )
+
+                        these_coefficients[airplane_id] = np.hstack(
+                            [these_force_coefficients, these_moment_coefficients]
                         )
 
                     # Populate the arrays that store information of all the
                     # iterations with the data from this iteration.
-                    force_coefficients[
-                        wake_id, length_id, ar_id, chord_id, :
-                    ] = these_force_coefficients
-                    moment_coefficients[
-                        wake_id, length_id, ar_id, chord_id, :
-                    ] = these_moment_coefficients
-                    iter_times[wake_id, length_id, ar_id, chord_id] = this_iter_time
+                    coefficients[these_ids] = these_coefficients
+                    iter_times[these_ids] = this_iter_time
 
                     validation_logger.info(
                         "\t\t\t\tIteration Time: "
@@ -689,177 +600,43 @@ def analyze_convergence(
                         + " s"
                     )
 
-                    # ps.output.draw(
-                    #     this_solver,
-                    #     scalar_type="lift",
-                    #     show_wake_vortices=True,
-                    # )
+                    max_wake_apc = get_max_apc(
+                        0, these_ids, coefficients, coefficient_mask
+                    )
+                    max_length_apc = get_max_apc(
+                        1, these_ids, coefficients, coefficient_mask
+                    )
+                    max_ar_apc = get_max_apc(
+                        2, these_ids, coefficients, coefficient_mask
+                    )
+                    max_chord_apc = get_max_apc(
+                        3, these_ids, coefficients, coefficient_mask
+                    )
 
-                    max_wake_pc = np.inf
-                    max_length_pc = np.inf
-                    max_ar_pc = np.inf
-                    max_chord_pc = np.inf
-
-                    # If this isn't the first wake state, calculate the wake state APE.
-                    if wake_id > 0:
-                        last_wake_force_coefficients = force_coefficients[
-                            wake_id - 1, length_id, ar_id, chord_id, :
-                        ]
-                        last_wake_moment_coefficients = moment_coefficients[
-                            wake_id - 1, length_id, ar_id, chord_id, :
-                        ]
-                        max_wake_force_pc = max(
-                            100
-                            * np.abs(
-                                (
-                                    these_force_coefficients
-                                    - last_wake_force_coefficients
-                                )
-                                / last_wake_force_coefficients
-                            )
-                        )
-                        max_wake_moment_pc = max(
-                            100
-                            * np.abs(
-                                (
-                                    these_moment_coefficients
-                                    - last_wake_moment_coefficients
-                                )
-                                / last_wake_moment_coefficients
-                            )
-                        )
-                        max_wake_pc = max(max_wake_force_pc, max_wake_moment_pc)
-
+                    if not np.isnan(max_wake_apc):
                         validation_logger.info(
                             "\t\t\t\tMaximum coefficient change from wake type: "
-                            + str(round(max_wake_pc, 2))
+                            + str(round(max_wake_apc, 2))
                             + "%"
                         )
-                    else:
-                        validation_logger.info(
-                            "\t\t\t\tMaximum coefficient change from wake type: "
-                            + str(max_wake_pc)
-                        )
 
-                    # If this isn't the first wake length, calculate the wake state APE.
-                    if length_id > 0:
-                        last_length_force_coefficients = force_coefficients[
-                            wake_id, length_id - 1, ar_id, chord_id, :
-                        ]
-                        last_length_moment_coefficients = moment_coefficients[
-                            wake_id, length_id - 1, ar_id, chord_id, :
-                        ]
-                        max_length_force_pc = max(
-                            100
-                            * np.abs(
-                                (
-                                    these_force_coefficients
-                                    - last_length_force_coefficients
-                                )
-                                / last_length_force_coefficients
-                            )
-                        )
-                        max_length_moment_pc = max(
-                            100
-                            * np.abs(
-                                (
-                                    these_moment_coefficients
-                                    - last_length_moment_coefficients
-                                )
-                                / last_length_moment_coefficients
-                            )
-                        )
-                        max_length_pc = max(max_length_force_pc, max_length_moment_pc)
-
+                    if not np.isnan(max_length_apc):
                         validation_logger.info(
                             "\t\t\t\tMaximum coefficient change from wake length: "
-                            + str(round(max_length_pc, 2))
+                            + str(round(max_length_apc, 2))
                             + "%"
                         )
-                    else:
-                        validation_logger.info(
-                            "\t\t\t\tMaximum coefficient change from wake length: "
-                            + str(max_length_pc)
-                        )
 
-                    # If this isn't the first panel aspect ratio, calculate the panel
-                    # aspect ratio APE.
-                    if ar_id > 0:
-                        last_ar_force_coefficients = force_coefficients[
-                            wake_id, length_id, ar_id - 1, chord_id, :
-                        ]
-                        last_ar_moment_coefficients = moment_coefficients[
-                            wake_id, length_id, ar_id - 1, chord_id, :
-                        ]
-                        max_ar_force_pc = max(
-                            100
-                            * np.abs(
-                                (these_force_coefficients - last_ar_force_coefficients)
-                                / last_ar_force_coefficients
-                            )
-                        )
-                        max_ar_moment_pc = max(
-                            100
-                            * np.abs(
-                                (
-                                    these_moment_coefficients
-                                    - last_ar_moment_coefficients
-                                )
-                                / last_ar_moment_coefficients
-                            )
-                        )
-                        max_ar_pc = max(max_ar_force_pc, max_ar_moment_pc)
-
+                    if not np.isnan(max_ar_apc):
                         validation_logger.info(
                             "\t\t\t\tMaximum coefficient change from panel aspect "
-                            "ratio: " + str(round(max_ar_pc, 2)) + "%"
-                        )
-                    else:
-                        validation_logger.info(
-                            "\t\t\t\tMaximum coefficient change from panel aspect "
-                            "ratio: " + str(max_ar_pc)
+                            "ratio: " + str(round(max_ar_apc, 2)) + "%"
                         )
 
-                    # If this isn't the first number of chordwise panels, the number
-                    # of chordwise panels APE.
-                    if chord_id > 0:
-                        last_chord_force_coefficients = force_coefficients[
-                            wake_id, length_id, ar_id, chord_id - 1, :
-                        ]
-                        last_chord_moment_coefficients = moment_coefficients[
-                            wake_id, length_id, ar_id, chord_id - 1, :
-                        ]
-                        max_chord_force_pc = max(
-                            100
-                            * np.abs(
-                                (
-                                    these_force_coefficients
-                                    - last_chord_force_coefficients
-                                )
-                                / last_chord_force_coefficients
-                            )
-                        )
-                        max_chord_moment_pc = max(
-                            100
-                            * np.abs(
-                                (
-                                    these_moment_coefficients
-                                    - last_chord_moment_coefficients
-                                )
-                                / last_chord_moment_coefficients
-                            )
-                        )
-                        max_chord_pc = max(max_chord_force_pc, max_chord_moment_pc)
-
+                    if not np.isnan(max_chord_apc):
                         validation_logger.info(
-                            "\t\t\t\tMaximum coefficient change from chordwise panels: "
-                            + str(round(max_chord_pc, 2))
-                            + "%"
-                        )
-                    else:
-                        validation_logger.info(
-                            "\t\t\t\tMaximum coefficient change from chordwise panels: "
-                            + str(max_chord_pc)
+                            "\t\t\t\tMaximum coefficient change from chordwise "
+                            "panels: " + str(round(max_chord_apc, 2)) + "%"
                         )
 
                     # Consider the panel aspect ratio value to be saturated if it is
@@ -879,10 +656,10 @@ def analyze_convergence(
 
                     # Check if the iteration calculated that it is converged with
                     # respect to any of the four convergence parameters.
-                    wake_converged = max_wake_pc < convergence_criteria
-                    length_converged = max_length_pc < convergence_criteria
-                    ar_converged = max_ar_pc < convergence_criteria
-                    chord_converged = max_chord_pc < convergence_criteria
+                    wake_converged = max_wake_apc < convergence_criteria
+                    length_converged = max_length_apc < convergence_criteria
+                    ar_converged = max_ar_apc < convergence_criteria
+                    chord_converged = max_chord_apc < convergence_criteria
 
                     # Consider each convergence parameter to have passed it is
                     # converged, single, or saturated.
@@ -1008,8 +785,7 @@ def analyze_convergence(
                             panel_aspect_ratios_list,
                             num_chordwise_panels_list,
                             iter_times,
-                            force_coefficients,
-                            moment_coefficients,
+                            coefficients,
                         ]
 
     # If all iterations have been checked and none of them resulted in all
@@ -1019,26 +795,51 @@ def analyze_convergence(
     return [None, None, None, None]
 
 
+def get_max_apc(param_index, these_ids, coefficients, coefficient_mask):
+    max_pc = np.nan
+
+    param_id = these_ids[param_index]
+
+    if param_id > 0:
+
+        last_ids = list(these_ids)
+        last_ids[param_index] = param_id - 1
+        last_ids = tuple(last_ids)
+
+        these_coefficients = coefficients[these_ids]
+        last_coefficients = coefficients[last_ids]
+
+        these_coefficients = these_coefficients[:, coefficient_mask]
+        last_coefficients = last_coefficients[:, coefficient_mask]
+
+        apcs = absolute_percent_change(these_coefficients, last_coefficients)
+
+        max_pc = np.max(apcs)
+
+    return max_pc
+
+
+# ToDo: Document this function.
+def absolute_percent_change(new, old):
+    return 100 * np.abs((new - old) / old)
+
+
 # 5% Convergence:
 #   wake:               prescribed
 #   cycles:             2
+#   panel aspect ratio: 4 (3 spanwise sections)
+#   chordwise panels:   3
+# 1% Convergence:
+#   wake:               free
+#   cycles:             2
 #   panel aspect ratio: 4 (4 spanwise sections)
 #   chordwise panels:   4
-# 1% Convergence:
-#   wake:               prescribed
-#   cycles:             2
-#   panel aspect ratio: 1 (33 spanwise sections)
-#   chordwise panels:   9
 converged_parameters = analyze_convergence(
-    # True
+    coefficient_mask=[False, False, True, False, False, False],
     prescribed_wake=True,
-    # False
     free_wake=True,
-    # 2
-    num_cycles_bounds=(2, 3),
-    # 1
-    panel_aspect_ratio_bounds=(2, 1),
-    # 9
-    num_chordwise_panels_bounds=(9, 10),
+    num_cycles_bounds=(2, 4),
+    panel_aspect_ratio_bounds=(4, 2),
+    num_chordwise_panels_bounds=(3, 6),
     convergence_criteria=1.0,
 )

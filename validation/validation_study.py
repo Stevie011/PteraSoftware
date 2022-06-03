@@ -21,6 +21,16 @@ import numpy as np
 # Import the source package.
 import pterasoftware as ps
 
+# 1% Convergence:
+#   wake:               free
+#   cycles:             2
+#   panel aspect ratio: 4 (4 spanwise sections)
+#   chordwise panels:   4
+prescribed_wake = False
+num_flaps = 2
+num_spanwise_sections = 4
+num_chordwise_panels = 4
+
 # Set the given characteristics of the wing in meters.
 half_span = 0.213
 chord = 0.072
@@ -68,16 +78,6 @@ tip_index = np.where(planform_coords[:, 1] == half_span)[0][0]
 # edge coordinates.
 leading_coords = planform_coords[:tip_index, :]
 trailing_coords = np.flip(planform_coords[tip_index:, :], axis=0)
-
-# Set the number of flap cycles to run the simulation for.
-num_flaps = 2
-
-# Set the number of chordwise panels.
-num_chordwise_panels = 9
-
-# Set the number of sections to map on each wing half. There will be this number +1
-# wing cross sections per wing half.
-num_spanwise_sections = 33
 
 # Set the chordwise spacing scheme for the panels. This is set to uniform,
 # as is standard for UVLM simulations.
@@ -438,8 +438,8 @@ green_middle_area = 0.06565 * 0.015
 green_leading_point_coords = [0.01569, 0.1775]
 green_leading_area = 0.071 * 0.015
 
-# Run the validation solver. This validation study was run using a prescribed wake.
-validation_solver.run(prescribed_wake=True)
+# Run the validation solver.
+validation_solver.run(prescribed_wake=prescribed_wake)
 
 # Create a variable to hold the time in seconds at each of the simulation’s time steps.
 times = np.linspace(

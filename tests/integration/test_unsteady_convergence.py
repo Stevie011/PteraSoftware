@@ -75,6 +75,7 @@ class TestUnsteadyConvergence(unittest.TestCase):
         converged_panel_ar = converged_parameters[2]
         converged_num_chordwise = converged_parameters[3]
 
+        # ToDo: Check that these values are still accurate.
         num_chords_ans = 6
         panel_ar_ans = 3
         num_chordwise_ans = 4

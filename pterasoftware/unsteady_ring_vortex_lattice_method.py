@@ -1591,6 +1591,8 @@ class UnsteadyRingVortexLatticeMethodSolver:
         # Calculate and return the flapping velocities.
         return -(these_left_leg_centers - last_left_leg_centers) / self.delta_time
 
+    # ToDo: Update this method's documentation to reflect the addition of RMS load
+    #  coefficients.
     def finalize_near_field_forces_and_moments(self):
         """This function finds the final cycle-averaged force, moments,
         force coefficients, and moment coefficients for each of this problem's
@@ -1684,6 +1686,25 @@ class UnsteadyRingVortexLatticeMethodSolver:
                 total_near_field_moment_coefficients_wind_axes[airplane_id, 2, :]
             )
 
+            these_rms_force_coefficients = np.sqrt(
+                np.mean(
+                    np.square(
+                        total_near_field_force_coefficients_wind_axes[airplane_id, :, :]
+                    ),
+                    axis=-1,
+                )
+            )
+            these_rms_moment_coefficients = np.sqrt(
+                np.mean(
+                    np.square(
+                        total_near_field_moment_coefficients_wind_axes[
+                            airplane_id, :, :
+                        ]
+                    ),
+                    axis=-1,
+                )
+            )
+
             these_mean_forces = np.array(
                 [
                     these_mean_induced_drags,
@@ -1724,4 +1745,10 @@ class UnsteadyRingVortexLatticeMethodSolver:
             )
             self.unsteady_problem.final_total_near_field_moment_coefficients_wind_axes.append(
                 these_mean_moment_coefficients
+            )
+            self.unsteady_problem.final_rms_force_coefficients.append(
+                these_rms_force_coefficients
+            )
+            self.unsteady_problem.final_rms_moment_coefficients.append(
+                these_rms_moment_coefficients
             )

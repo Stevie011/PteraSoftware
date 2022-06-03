@@ -94,12 +94,14 @@ class UnsteadyProblem:
         else:
             self.first_results_step = 0
 
-        # Initialize empty lists to hold the final force, moment, force coefficients,
-        # and moment coefficients this each airplane object experiences.
+        # Initialize empty lists that will hold the final loads, and load
+        # coefficients each airplane object experiences.
         self.final_total_near_field_forces_wind_axes = []
         self.final_total_near_field_force_coefficients_wind_axes = []
         self.final_total_near_field_moments_wind_axes = []
         self.final_total_near_field_moment_coefficients_wind_axes = []
+        self.final_rms_force_coefficients = []
+        self.final_rms_moment_coefficients = []
 
         # Initialize an empty list to hold the steady problems.
         self.steady_problems = []

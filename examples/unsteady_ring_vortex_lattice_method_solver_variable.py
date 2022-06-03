@@ -456,5 +456,7 @@ ps.output.animate(
     save=False,
 )
 
+ps.output.plot_results_versus_time(unsteady_solver=example_solver)
+
 # Compare the output you see with the expected outputs saved in the "docs/examples
 # expected output" directory.

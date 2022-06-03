@@ -34,6 +34,7 @@ logging.basicConfig()
 
 
 # ToDo: Add the coefficient mask parameter to the docstring.
+# ToDo: Update this function's documentation.
 def analyze_steady_convergence(
     ref_problem,
     coefficient_mask,
@@ -410,12 +411,13 @@ def analyze_steady_convergence(
 
 
 # ToDo: Add the coefficient mask parameter to the docstring.
+# ToDo: Update this function's documentation.
 def analyze_unsteady_convergence(
     ref_problem,
     coefficient_mask,
     prescribed_wake=True,
     free_wake=True,
-    num_cycles_bounds=(1, 4),
+    num_cycles_bounds=(2, 4),
     num_chords_bounds=(3, 7),
     panel_aspect_ratio_bounds=(4, 1),
     num_chordwise_panels_bounds=(3, 12),
@@ -513,8 +515,6 @@ def analyze_unsteady_convergence(
         a set of converged parameters, it returns values of None for all items in the
         list.
     """
-    if coefficient_mask is None:
-        coefficient_mask = [False, False, True, False, False, False]
     convergence_logger.info("Beginning convergence analysis.")
 
     ref_movement = ref_problem.movement
@@ -905,19 +905,33 @@ def analyze_unsteady_convergence(
                     this_iter_time = iter_stop - iter_start
 
                     # Create and fill arrays with each of this iteration's airplane's
-                    # resultant force and moment coefficients.
+                    # resultant force and moment coefficients. If the geometry isn't
+                    # static, we'll take use the RMS final-cycle coefficients to
+                    # determine convergence.
                     these_coefficients = np.zeros((len(these_airplane_movements), 6))
                     for airplane_id, airplane in enumerate(these_airplane_movements):
-                        these_force_coefficients = this_problem.final_total_near_field_force_coefficients_wind_axes[
-                            airplane_id
-                        ]
-                        these_moment_coefficients = this_problem.final_total_near_field_moment_coefficients_wind_axes[
-                            airplane_id
-                        ]
+                        if is_static:
+                            these_force_coefficients = this_problem.final_total_near_field_force_coefficients_wind_axes[
+                                airplane_id
+                            ]
+                            these_moment_coefficients = this_problem.final_total_near_field_moment_coefficients_wind_axes[
+                                airplane_id
+                            ]
 
-                        these_coefficients[airplane_id] = np.hstack(
-                            [these_force_coefficients, these_moment_coefficients]
-                        )
+                            these_coefficients[airplane_id] = np.hstack(
+                                [these_force_coefficients, these_moment_coefficients]
+                            )
+                        else:
+                            these_force_coefficients = (
+                                this_problem.final_rms_force_coefficients[airplane_id]
+                            )
+                            these_moment_coefficients = (
+                                this_problem.final_rms_moment_coefficients[airplane_id]
+                            )
+
+                            these_coefficients[airplane_id] = np.hstack(
+                                [these_force_coefficients, these_moment_coefficients]
+                            )
 
                     # Populate the arrays that store information of all the
                     # iterations with the data from this iteration.

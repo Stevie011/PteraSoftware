@@ -1,21 +1,31 @@
 # ToDo: Document this script.
 import pterasoftware as ps
 
-# Known Converged Values (0.5% convergence, 0 degrees angle of attack):
-#   1 Airplane (flaps, chordwise panels, prescribed wake):
-#       2, 7, False
-#   3 Airplanes (flaps, chordwise panels, prescribed wake):
-#       3, 7, False
-#   5 Airplanes (flaps, chordwise panels, prescribed wake):
-#       3, 7, False
-num_airplanes = 1
-num_flaps = 2
-num_chord = 7
+# 1% Convergence:
+#   1 Airplane:
+#       wake:               free
+#       cycles:             2
+#       panel aspect ratio: 1 (6 and 6 spanwise panels)
+#       chordwise panels:   3
+#   3 Airplanes:
+#       wake:               free
+#       cycles:             3
+#       panel aspect ratio: 1 (10 and 9 spanwise panels)
+#       chordwise panels:   5
+#   5 Airplanes:
+#       wake:               free
+#       cycles:             3
+#       panel aspect ratio: 1 (10 and 9 spanwise panels)
+#       chordwise panels:   5
+num_airplanes = 5
 prescribed_wake = False
+num_flaps = 3
+root_to_mid_num_span = 10
+mid_to_tip_num_span = 9
+num_chord = 5
 
-aspect_ratio = 5.0
 speed = 1.0
-alpha = 0.0
+alpha = 5.0
 x_spacing = 0.5
 y_spacing = 0.5
 root_to_mid_span = 0.2275
@@ -25,29 +35,16 @@ tip_chord = 0.0219
 flapping_amplitude = 15.0
 
 period = x_spacing / speed
-root_to_mid_chord = root_chord
-mid_to_tip_chord = (root_chord + tip_chord) / 2
 
+# Leave alpha zero here as the wing twist is used later to set alpha.
 this_operating_point = ps.operating_point.OperatingPoint(
     velocity=speed,
-    alpha=0.0,
+    alpha=0,
 )
 this_operating_point_movement = ps.movement.OperatingPointMovement(
     base_operating_point=this_operating_point,
 )
 del this_operating_point
-
-print("Prescribed Wake:", prescribed_wake)
-print("Number of flaps:", num_flaps)
-print("Number of chordwise panels:", num_chord)
-
-root_to_mid_panel_chord = root_to_mid_chord / num_chord
-mid_to_tip_panel_chord = mid_to_tip_chord / num_chord
-
-root_to_mid_num_span = round(
-    root_to_mid_span / (aspect_ratio * root_to_mid_panel_chord)
-)
-mid_to_tip_num_span = round(mid_to_tip_span / (aspect_ratio * mid_to_tip_panel_chord))
 
 these_airplane_movements = []
 row = None
@@ -88,7 +85,7 @@ for airplane_id in range(num_airplanes):
                         chord=root_chord,
                         airfoil=ps.geometry.Airfoil(name="naca0012"),
                         num_spanwise_panels=root_to_mid_num_span,
-                        spanwise_spacing="cosine",
+                        spanwise_spacing="uniform",
                     ),
                     ps.geometry.WingCrossSection(
                         twist=alpha,
@@ -96,7 +93,7 @@ for airplane_id in range(num_airplanes):
                         chord=root_chord,
                         airfoil=ps.geometry.Airfoil(name="naca0012"),
                         num_spanwise_panels=mid_to_tip_num_span,
-                        spanwise_spacing="cosine",
+                        spanwise_spacing="uniform",
                     ),
                     ps.geometry.WingCrossSection(
                         twist=alpha,
