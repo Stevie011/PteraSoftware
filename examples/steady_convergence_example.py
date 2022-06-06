@@ -6,6 +6,7 @@ import pterasoftware as ps
 # Create two airplane objects. Read through the solver and formation examples for
 # more details on creating these objects.
 leading_airplane = ps.geometry.Airplane(
+    name="Leading",
     wings=[
         ps.geometry.Wing(
             symmetric=True,
@@ -62,6 +63,7 @@ leading_airplane = ps.geometry.Airplane(
     ],
 )
 trailing_airplane = ps.geometry.Airplane(
+    name="Trailing",
     x_ref=10,
     y_ref=-5,
     wings=[
