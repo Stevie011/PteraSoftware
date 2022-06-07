@@ -1140,6 +1140,7 @@ def analyze_unsteady_convergence(
                         plot_convergence_results(
                             ref_problem=ref_problem,
                             coefficients=coefficients,
+                            coefficient_mask=coefficient_mask,
                             converged_wake_id=converged_wake_id,
                             converged_length_id=converged_length_id,
                             converged_ar_id=converged_ar_id,
@@ -1174,6 +1175,7 @@ def analyze_unsteady_convergence(
 def plot_convergence_results(
     ref_problem,
     coefficients,
+    coefficient_mask,
     converged_wake_id=0,
     converged_length_id=0,
     converged_ar_id=0,
@@ -1232,8 +1234,26 @@ def plot_convergence_results(
         x_lims = (True, False)
         x_list = wake_list
 
+        if ref_problem.max_period == 0:
+            length_subtitle = "Wake Length (chords): " + str(
+                length_list[converged_length_id]
+            )
+        else:
+            length_subtitle = "Wake Length (cycles): " + str(
+                length_list[converged_length_id]
+            )
+        ar_subtitle = "Panel Aspect Ratio: " + str(ar_list[converged_ar_id])
+        chord_subtitle = "Chordwise Panels: " + str(chord_list[converged_chord_id])
+        subtitle = length_subtitle + "    " + ar_subtitle + "    " + chord_subtitle
+
         plot_parameter_convergence(
-            coefficients_to_plot, x_label, x_lims, x_list, airplane_names
+            coefficients_to_plot,
+            coefficient_mask,
+            x_label,
+            x_lims,
+            x_list,
+            airplane_names,
+            subtitle,
         )
 
     if plot_length:
@@ -1245,12 +1265,26 @@ def plot_convergence_results(
             :,
             :,
         ]
-        x_label = "Wake Length"
+        if ref_problem.max_period == 0:
+            x_label = "Wake Length (chords)"
+        else:
+            x_label = "Wake Length (cycles)"
         x_lims = (min(length_list), max(length_list))
         x_list = length_list
 
+        wake_subtitle = "Wake State: " + str(wake_list[converged_wake_id])
+        ar_subtitle = "Panel Aspect Ratio: " + str(ar_list[converged_ar_id])
+        chord_subtitle = "Chordwise Panels: " + str(chord_list[converged_chord_id])
+        subtitle = wake_subtitle + "    " + ar_subtitle + "    " + chord_subtitle
+
         plot_parameter_convergence(
-            coefficients_to_plot, x_label, x_lims, x_list, airplane_names
+            coefficients_to_plot,
+            coefficient_mask,
+            x_label,
+            x_lims,
+            x_list,
+            airplane_names,
+            subtitle,
         )
 
     if plot_ar:
@@ -1266,8 +1300,26 @@ def plot_convergence_results(
         x_lims = (max(ar_list), min(ar_list))
         x_list = ar_list
 
+        wake_subtitle = "Wake State: " + str(wake_list[converged_wake_id])
+        if ref_problem.max_period == 0:
+            length_subtitle = "Wake Length (chords): " + str(
+                length_list[converged_length_id]
+            )
+        else:
+            length_subtitle = "Wake Length (cycles): " + str(
+                length_list[converged_length_id]
+            )
+        chord_subtitle = "Chordwise Panels: " + str(chord_list[converged_chord_id])
+        subtitle = wake_subtitle + "    " + length_subtitle + "    " + chord_subtitle
+
         plot_parameter_convergence(
-            coefficients_to_plot, x_label, x_lims, x_list, airplane_names
+            coefficients_to_plot,
+            coefficient_mask,
+            x_label,
+            x_lims,
+            x_list,
+            airplane_names,
+            subtitle,
         )
 
     if plot_chord:
@@ -1279,23 +1331,50 @@ def plot_convergence_results(
             :,
             :,
         ]
-        x_label = "Number of Chordwise Panels"
+        x_label = "Chordwise Panels"
         x_lims = (min(chord_list), max(chord_list))
         x_list = chord_list
 
+        wake_subtitle = "Wake State: " + str(wake_list[converged_wake_id])
+        if ref_problem.max_period == 0:
+            length_subtitle = "Wake Length (chords): " + str(
+                length_list[converged_length_id]
+            )
+        else:
+            length_subtitle = "Wake Length (cycles): " + str(
+                length_list[converged_length_id]
+            )
+        ar_subtitle = "Panel Aspect Ratio: " + str(ar_list[converged_ar_id])
+        subtitle = wake_subtitle + "    " + length_subtitle + "    " + ar_subtitle
+
         plot_parameter_convergence(
-            coefficients_to_plot, x_label, x_lims, x_list, airplane_names
+            coefficients_to_plot,
+            coefficient_mask,
+            x_label,
+            x_lims,
+            x_list,
+            airplane_names,
+            subtitle,
         )
 
 
 # ToDo: Document this function.
 def plot_parameter_convergence(
     coefficients,
+    coefficient_mask,
     x_label,
     x_lims,
     x_list,
     airplane_names,
+    subtitle,
 ):
+    plot_drag, plot_side, plot_lift = coefficient_mask[:3]
+    plot_roll, plot_pitch, plot_yaw = coefficient_mask[3:]
+
+    figure_background_color = "None"
+    text_color = "black"
+    marker_size = 8
+
     prism = [
         "#5F4690",
         "#1D6996",
@@ -1322,39 +1401,99 @@ def plot_parameter_convergence(
     force_figure, force_axes = plt.subplots()
     moment_figure, moment_axes = plt.subplots()
 
+    # Remove all the plots' top and right spines.
+    force_axes.spines.right.set_visible(False)
+    force_axes.spines.top.set_visible(False)
+    moment_axes.spines.right.set_visible(False)
+    moment_axes.spines.top.set_visible(False)
+
+    # Format all the plots' spine and label colors.
+    force_axes.spines.bottom.set_color(text_color)
+    force_axes.spines.left.set_color(text_color)
+    force_axes.xaxis.label.set_color(text_color)
+    force_axes.yaxis.label.set_color(text_color)
+    moment_axes.spines.bottom.set_color(text_color)
+    moment_axes.spines.left.set_color(text_color)
+    moment_axes.xaxis.label.set_color(text_color)
+    moment_axes.yaxis.label.set_color(text_color)
+
+    # Format all the plots' tick colors.
+    force_axes.tick_params(axis="x", colors=text_color)
+    force_axes.tick_params(axis="y", colors=text_color)
+    moment_axes.tick_params(axis="x", colors=text_color)
+    moment_axes.tick_params(axis="y", colors=text_color)
+
+    # Format all the plots' background colors.
+    force_figure.patch.set_facecolor(figure_background_color)
+    force_axes.set_facecolor(figure_background_color)
+    moment_figure.patch.set_facecolor(figure_background_color)
+    moment_axes.set_facecolor(figure_background_color)
+
     import itertools
 
     marker = itertools.cycle(("o", "+", "s", "^", "v"))
-    force_axes.set_prop_cycle(color=[drag_color, side_color, lift_color])
-    moment_axes.set_prop_cycle(color=[roll_color, pitch_color, yaw_color])
 
     for airplane_id, airplane_name in enumerate(airplane_names):
         force_coefficients = coefficients[:, airplane_id, :3]
         moment_coefficients = coefficients[:, airplane_id, 3:]
 
         this_marker = next(marker)
-        force_axes.plot(
-            x_list,
-            force_coefficients,
-            label=[
-                airplane_name + " C_D",
-                airplane_name + " C_Y",
-                airplane_name + " C_L",
-            ],
-            marker=this_marker,
-            linestyle="-",
-        )
-        moment_axes.plot(
-            x_list,
-            moment_coefficients,
-            label=(
-                airplane_name + " C_l",
-                airplane_name + " C_m",
-                airplane_name + " C_n",
-            ),
-            marker=this_marker,
-            linestyle="-",
-        )
+
+        if plot_drag:
+            force_axes.plot(
+                x_list,
+                force_coefficients[:, 0],
+                label=airplane_name + " $C_D$",
+                marker=this_marker,
+                markersize=marker_size,
+                color=drag_color,
+            )
+        if plot_side:
+            force_axes.plot(
+                x_list,
+                force_coefficients[:, 1],
+                label=airplane_name + " $C_Y$",
+                marker=this_marker,
+                markersize=marker_size,
+                color=side_color,
+            )
+        if plot_lift:
+            force_axes.plot(
+                x_list,
+                force_coefficients[:, 2],
+                label=airplane_name + " $C_L$",
+                marker=this_marker,
+                markersize=marker_size,
+                color=lift_color,
+            )
+
+        if plot_roll:
+            moment_axes.plot(
+                x_list,
+                moment_coefficients[:, 0],
+                label=airplane_name + " $C_l$",
+                marker=this_marker,
+                markersize=marker_size,
+                color=roll_color,
+            )
+        if plot_pitch:
+            moment_axes.plot(
+                x_list,
+                moment_coefficients[:, 1],
+                label=airplane_name + " $C_m$",
+                marker=this_marker,
+                markersize=marker_size,
+                color=pitch_color,
+            )
+        if plot_yaw:
+            moment_axes.plot(
+                x_list,
+                moment_coefficients[:, 2],
+                label=airplane_name + " $C_n$",
+                marker=this_marker,
+                markersize=marker_size,
+                color=yaw_color,
+            )
 
     force_axes.set_xlim(x_lims[0], x_lims[1])
     moment_axes.set_xlim(x_lims[0], x_lims[1])
@@ -1364,20 +1503,37 @@ def plot_parameter_convergence(
     force_axes.set_ylim(force_y_lims[0], force_y_lims[1])
     moment_axes.set_ylim(moment_y_lims[0], moment_y_lims[1])
 
-    force_axes.set_xlabel(x_label)
-    moment_axes.set_xlabel(x_label)
+    force_axes.set_xlabel(x_label, color=text_color)
+    moment_axes.set_xlabel(x_label, color=text_color)
 
-    force_axes.set_ylabel("Final Cycle-Averaged Force Coefficient")
-    moment_axes.set_ylabel("Final Cycle-Averaged Moment Coefficient")
+    force_axes.set_ylabel("Final Cycle RMS Force Coefficient", color=text_color)
+    moment_axes.set_ylabel("Final Cycle RMS Moment Coefficient", color=text_color)
 
-    force_axes.set_title(x_label + "\nForce Convergence")
-    moment_axes.set_title(x_label + "\nMoment Convergence")
+    force_figure.suptitle(x_label + " Force Convergence", color=text_color)
+    moment_figure.suptitle(x_label + " Moment Convergence", color=text_color)
 
-    force_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
-    moment_axes.yaxis.set_major_formatter(FormatStrFormatter("%.4f"))
+    force_axes.set_title(subtitle, size=10, style="italic", color=text_color)
+    moment_axes.set_title(subtitle, size=10, style="italic", color=text_color)
 
-    force_axes.legend()
-    moment_axes.legend()
+    force_axes.xaxis.get_major_locator().set_params(integer=True)
+    moment_axes.xaxis.get_major_locator().set_params(integer=True)
+
+    force_axes.yaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+    moment_axes.yaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+
+    force_axes.legend(
+        facecolor=figure_background_color,
+        edgecolor=figure_background_color,
+        labelcolor=text_color,
+    )
+    moment_axes.legend(
+        facecolor=figure_background_color,
+        edgecolor=figure_background_color,
+        labelcolor=text_color,
+    )
+
+    force_figure.savefig(x_label + " Force Convergence.png", dpi=300)
+    moment_figure.savefig(x_label + " Moment Convergence.png", dpi=300)
 
     force_figure.show()
     moment_figure.show()

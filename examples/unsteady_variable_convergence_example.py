@@ -87,8 +87,8 @@ ps.convergence.analyze_unsteady_convergence(
     coefficient_mask=[False, False, True, False, False, False],
     prescribed_wake=True,
     free_wake=False,
-    num_cycles_bounds=(1, 5),
-    panel_aspect_ratio_bounds=(4, 4),
+    num_cycles_bounds=(3, 3),
+    panel_aspect_ratio_bounds=(4, 1),
     num_chordwise_panels_bounds=(6, 6),
     convergence_criteria=1.0,
 )
